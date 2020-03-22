@@ -13,12 +13,29 @@ void get_URL(const string &host, const string &path) {
     // the computer whose name is in the "host" string,
     // then request the URL path given in the "path" string.
 
+    Address httpServiceAddress = Address(host, "http");
+    TCPSocket sock1{};
+    sock1.connect(httpServiceAddress);
+
     // Then you'll need to print out everything the server sends back,
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
 
-    cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
-    cerr << "Warning: get_URL() has not been implemented yet.\n";
+    string requestLine = "GET " + path + " HTTP/1.1\r\n";
+    string headerLines = "Host: " + host + "\r\n";
+
+    sock1.write(requestLine);
+    sock1.write(headerLines);
+    sock1.write("\r\n");  // In doubt.
+
+    sock1.shutdown(SHUT_WR);  // Tell server I'm done in making requests.
+
+    string line = sock1.read();
+    cout << line;
+    sock1.close();
+
+    // cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
+    // cerr << "Warning: get_URL() has not been implemented yet.\n";
 }
 
 int main(int argc, char *argv[]) {
