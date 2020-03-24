@@ -46,6 +46,27 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
 }
 
 // use klee's algorithm, comput on the fly.
-size_t StreamReassembler::unassembled_bytes() const { return _unassembledBytesCount; }
+size_t StreamReassembler::unassembled_bytes() const {
+    uint64_t n = _indexToUnassembledBytes.size();
+    vector<pair <uint64_t, bool> > points{2*n};
+
+    for (uint64_t i=0; i<n; i++) {
+        auto iit = _indexToUnassembledBytes.begin();
+        points[2*i] = make_pair(iit->first, false);
+        points[2*i+1] = make_pair(iit->first + iit->second.size(), true);
+    }
+    sort(points.begin(), points.end());
+    size_t result = 0;
+    uint64_t overlappedSegmentCount = 0;
+
+    for (uint64_t i=0; i<2*n; i++) {
+        if (overlappedSegmentCount) {
+            result += points[i].first - points[i-1].first;
+        }
+        // is point[i] a ending segment point?
+        (points[i].second) ? overlappedSegmentCount-- : overlappedSegmentCount++;
+    }
+    return result;
+}
 
 bool StreamReassembler::empty() const { return unassembled_bytes() == 0; }

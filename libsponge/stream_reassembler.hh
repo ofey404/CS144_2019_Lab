@@ -9,6 +9,7 @@
 #include <queue>
 #include <map>
 #include <set>
+#include <algorithm>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
@@ -21,7 +22,7 @@ class StreamReassembler {
     size_t _eofIndex; 
     size_t _unassembledBytesCount;
     uint64_t _nextExpectedIndex;
-    std::map<int, std::string> _indexToUnassembledBytes;
+    std::map<uint64_t, std::string> _indexToUnassembledBytes;
     std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> _unassembledIndices;
 
   public:
