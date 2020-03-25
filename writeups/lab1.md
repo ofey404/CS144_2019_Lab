@@ -43,7 +43,7 @@ The addition and subtraction of indices, I always afraid to miss or missadd a on
 Didn't understand the behavior of interface at first. Correct it according to the tests.
 
 Remaining Bugs:
-[]
+Memory consumption don't limited properly, for the unassembled bytes can grow beyond the `capacity` limit.
 
 - Optional: I had unexpected difficulty with: Understanding the behavior of interface.
 
