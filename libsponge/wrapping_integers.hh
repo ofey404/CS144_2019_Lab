@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <ostream>
 
+const uint64_t WRAPPING_CONSTANT_32BIT = 0xffffffff;  // hexadecimal representation of 2^32, wrapping divisor for 32 bit uint.
+
 //! \brief A 32-bit integer, expressed relative to an arbitrary initial sequence number (ISN)
 //! \note This is used to express TCP sequence numbers (seqno) and acknowledgment numbers (ackno)
 class WrappingInt32 {

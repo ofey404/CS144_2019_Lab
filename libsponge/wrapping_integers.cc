@@ -14,8 +14,7 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    return WrappingInt32(uint32_t((n + isn.raw_value()) % WRAPPING_CONSTANT_32BIT));
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +28,15 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    // caution overflow during type casting.
+    int64_t seqnoOffset = int64_t(n.raw_value()) - int64_t(isn.raw_value()) >= 0 ? n.raw_value() - isn.raw_value() : (uint64_t(n.raw_value()) + WRAPPING_CONSTANT_32BIT) - uint64_t(isn.raw_value());
+    int64_t checkpointOffset = checkpoint % WRAPPING_CONSTANT_32BIT;
+    uint64_t checkpointBase = checkpoint - checkpointOffset;
+    if (checkpointOffset-seqnoOffset > int64_t(WRAPPING_CONSTANT_32BIT) / 2) {
+        return uint64_t(checkpointBase + seqnoOffset + WRAPPING_CONSTANT_32BIT);
+    } else if (seqnoOffset-checkpointOffset > int64_t(WRAPPING_CONSTANT_32BIT) / 2) {
+        return uint64_t(checkpointBase + seqnoOffset - WRAPPING_CONSTANT_32BIT);
+    } else {
+        return uint64_t(checkpointBase + seqnoOffset);
+    }
 }
