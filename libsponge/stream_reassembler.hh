@@ -20,7 +20,6 @@ class StreamReassembler {
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
     size_t _eofIndex; 
-    size_t _unassembledBytesCount;
     uint64_t _nextExpectedIndex;
     std::map<uint64_t, std::string> _indexToUnassembledBytes;
     std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> _unassembledIndices;
