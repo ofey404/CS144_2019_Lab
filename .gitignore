@@ -9,3 +9,5 @@ CTestTestfile.cmake
 compile_commands.json
 
 /doc/
+
+.vscode/
