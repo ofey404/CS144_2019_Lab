@@ -18,6 +18,7 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
+    // printf("\n++ enter push_substring ++\n");
     // Above all, update eof information.
     if (eof) {  // latter eof set would override the previous one.
         _eofIndex = index + data.size();
@@ -27,18 +28,28 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     _indexToUnassembledBytes[index] = data;
     uint64_t minorIndex = _unassembledIndices.top();
 
+
     // In every push, merge all possible substring into the sequence.
     while (minorIndex <= _nextExpectedIndex && !_unassembledIndices.empty()) {
         string minorIndexBytes = _indexToUnassembledBytes[minorIndex];
         if (minorIndex + minorIndexBytes.size() > _nextExpectedIndex) {
+            if (minorIndexBytes.size() - (_nextExpectedIndex - minorIndex) > _capacity - _output.buffer_size()) {
+                break;
+            }
+            // printf("Output written, %s\n", minorIndexBytes.substr(_nextExpectedIndex-minorIndex).c_str());
+            // printf("_output.buffer_size() = %lu\n", _output.buffer_size());
             _output.write(minorIndexBytes.substr(_nextExpectedIndex-minorIndex));
             _nextExpectedIndex += minorIndexBytes.size() - (_nextExpectedIndex - minorIndex);
         }
+        // printf("Assemble index %lu\n", minorIndex);
+        // printf("%s\n", minorIndexBytes.c_str());
+        // printf("_output.byte_written() = %lu\n", _output.bytes_written());
+        // printf("_output.peek_output(100) = %s\n", _output.peek_output(100).c_str());
         _indexToUnassembledBytes.erase(minorIndex);
         _unassembledIndices.pop();
         minorIndex = _unassembledIndices.top();  // update minorIndex for possible next loop
     }
-
+    
     if (_nextExpectedIndex == _eofIndex) { // if reach eof
         _output.end_input();
     }
