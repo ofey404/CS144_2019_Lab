@@ -24,41 +24,27 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         _eofIndex = index + data.size();
     }
 
-    _unassembledIndices.push(index);
-    _indexToUnassembledBytes[index] = data;
-    uint64_t minorIndex = _unassembledIndices.top();
+    _unassembledSubstrings.push(Substring(index, data));
 
-
-    // In every push, merge all possible substring into the sequence.
-    while (minorIndex <= _nextExpectedIndex && !_unassembledIndices.empty()) {
-        string minorIndexBytes = _indexToUnassembledBytes[minorIndex];
-        if (minorIndex + minorIndexBytes.size() > _nextExpectedIndex) {
-            if (minorIndexBytes.size() - (_nextExpectedIndex - minorIndex) > _capacity - _output.buffer_size()) {
-                break;
+    while (!_unassembledSubstrings.empty() && _unassembledSubstrings.top().begin() <= _nextExpectedIndex && _output.remaining_capacity() != 0) {
+        Substring ssWithMinorIndex = _unassembledSubstrings.top(); _unassembledSubstrings.pop();
+        // If there are some usable part of substring, write it.
+        if (ssWithMinorIndex.containIndex(_nextExpectedIndex)) {
+            string s = ssWithMinorIndex.literal(_nextExpectedIndex - ssWithMinorIndex.begin());
+            size_t bytesWritten = _output.write(s);
+            _nextExpectedIndex += bytesWritten;
+            // If the output is full, write much bit as possible, put the rest
+            // substring back to the minor heap.
+            if (bytesWritten != s.size()) {
+                _unassembledSubstrings.push(Substring(ssWithMinorIndex.begin()+bytesWritten, ssWithMinorIndex.literal(bytesWritten)));
             }
-            // printf("Output written, %s\n", minorIndexBytes.substr(_nextExpectedIndex-minorIndex).c_str());
-            // printf("_output.buffer_size() = %lu\n", _output.buffer_size());
-            _output.write(minorIndexBytes.substr(_nextExpectedIndex-minorIndex));
-            _nextExpectedIndex += minorIndexBytes.size() - (_nextExpectedIndex - minorIndex);
         }
-        // printf("Assemble index %lu\n", minorIndex);
-        // printf("%s\n", minorIndexBytes.c_str());
-        // printf("_output.byte_written() = %lu\n", _output.bytes_written());
-        // printf("_output.peek_output(100) = %s\n", _output.peek_output(100).c_str());
-        _indexToUnassembledBytes.erase(minorIndex);
-        _unassembledIndices.pop();
-        minorIndex = _unassembledIndices.top();  // update minorIndex for possible next loop
     }
-    
-    if (_nextExpectedIndex == _eofIndex) { // if reach eof
-        _output.end_input();
-    }
-
 }
 
 // use klee's algorithm, comput on the fly.
 size_t StreamReassembler::unassembled_bytes() const {
-    uint64_t n = _indexToUnassembledBytes.size();
+    uint64_t n = _unassembledSubstrings.size();
     vector<pair <uint64_t, bool> > points{2*n};
     uint64_t overlappedSegmentCount = 0;
     size_t result = 0;  // Total range of union of segments.

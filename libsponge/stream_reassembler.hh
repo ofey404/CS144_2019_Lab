@@ -11,6 +11,64 @@
 #include <set>
 #include <algorithm>
 
+class Substring {
+  private:
+    std::string _literal;
+    uint64_t _begin;
+
+  public:
+    Substring(const uint64_t beginIndex, const std::string literalString): _begin(beginIndex), _literal(literalString) {}
+
+    // copy constructor
+    Substring(const Substring &s): _begin(s.begin()), _literal(s.literal()) {}
+
+    bool operator<(const Substring &s) {
+        return _begin < s._begin;
+    }
+
+    bool operator>(const Substring &s) {
+        return _begin > s._begin;
+    }
+
+    // Literal from `begin` to end.
+    string literal(const uint64_t &begin=0) const { return _literal.substr(begin); }
+
+    // Beginning index of substring.
+    uint64_t begin() const { return _begin; }
+
+    // First non-substring index.
+    uint64_t end() const { return _begin + _literal.size(); }
+
+    // If the range of substring contains given index
+    bool containIndex(uint64_t index) const {
+        return (begin() <= index && index < end());
+    }
+
+    // If two substring overlaps.
+    bool isOverlapping(const Substring &s) const {
+        return begin() <= s.end() && end() <= s.begin();
+    }
+
+    // Merge two overlapped substring.
+    // If unfortunately, two substring don't overlap, throw an error.
+    const Substring merge(const Substring &s) const {
+        if (!isOverlapping(s)) {
+            throw "merged substring are not overlapping:\n" + _literal + "\nand" + s.literal() + "\n";
+        }
+        Substring left{begin() < s.begin() ? *this : s};
+        Substring right{begin() < s.begin() ? s : *this};
+
+        if (left.end() >= right.end()) {
+            return left;
+        } else {
+            uint64_t rightBegin = left.end() - right.begin();
+            uint64_t rightLength = right.end() - left.end();
+            return Substring(left.begin(), left.literal() + right.literal().substr(rightBegin, rightLength));
+        }
+    }
+};
+
+
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
@@ -21,8 +79,8 @@ class StreamReassembler {
     size_t _capacity;    //!< The maximum number of bytes
     size_t _eofIndex; 
     uint64_t _nextExpectedIndex;
-    std::map<uint64_t, std::string> _indexToUnassembledBytes;
-    std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> _unassembledIndices;
+    std::priority_queue<Substring, std::vector<Substring>, greater<Substring> > _unassembledSubstrings;
+
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
