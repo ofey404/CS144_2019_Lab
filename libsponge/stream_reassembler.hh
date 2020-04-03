@@ -17,21 +17,17 @@ class Substring {
     uint64_t _begin;
 
   public:
-    Substring(const uint64_t beginIndex, const std::string literalString): _begin(beginIndex), _literal(literalString) {}
+    Substring(const uint64_t beginIndex, const std::string literalString):  _literal(literalString), _begin(beginIndex) {}
 
     // copy constructor
-    Substring(const Substring &s): _begin(s.begin()), _literal(s.literal()) {}
+    Substring(const Substring &s):  _literal(s.literal()), _begin(s.begin()) {}
 
     bool operator<(const Substring &s) {
-        return _begin < s._begin;
-    }
-
-    bool operator>(const Substring &s) {
-        return _begin > s._begin;
+        return _begin > s.begin();
     }
 
     // Literal from `begin` to end.
-    string literal(const uint64_t &begin=0) const { return _literal.substr(begin); }
+    std::string literal(const uint64_t &begin=0) const { return _literal.substr(begin); }
 
     // Beginning index of substring.
     uint64_t begin() const { return _begin; }
@@ -68,6 +64,19 @@ class Substring {
     }
 };
 
+template <class T>
+class IterableHeap {
+  private:
+    std::vector<T> _container;
+  public:
+    IterableHeap(): _container() { make_heap(_container.begin(), _container.end()); }
+    void push(T element) { _container.push_back(element); push_heap(_container.begin(), _container.end()); }
+    const T& top() const { return _container.front(); }
+    void pop() { pop_heap(_container.begin(), _container.end()); _container.pop_back(); }
+    bool empty() const { return _container.empty(); }
+    uint64_t size() const { return _container.size(); }
+    const T& index(uint64_t x) const { return _container[x]; }
+};
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
@@ -79,7 +88,7 @@ class StreamReassembler {
     size_t _capacity;    //!< The maximum number of bytes
     size_t _eofIndex; 
     uint64_t _nextExpectedIndex;
-    std::priority_queue<Substring, std::vector<Substring>, greater<Substring> > _unassembledSubstrings;
+    IterableHeap<Substring> _unassembledHeap;  // Minor heap to contain unassembled substring.
 
 
   public:

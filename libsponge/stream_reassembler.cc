@@ -12,7 +12,7 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity), _eofIndex(-1), _nextExpectedIndex(0), _indexToUnassembledBytes(), _unassembledIndices() {}
+StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity), _eofIndex(-1), _nextExpectedIndex(0), _unassembledHeap() {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
@@ -24,10 +24,12 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         _eofIndex = index + data.size();
     }
 
-    _unassembledSubstrings.push(Substring(index, data));
+    _unassembledHeap.push(Substring(index, data));
+    //     _unassembledHeap.push_back(Substring(index, data)); push_heap(_unassembledHeap.begin(), _unassembledHeap.end());
 
-    while (!_unassembledSubstrings.empty() && _unassembledSubstrings.top().begin() <= _nextExpectedIndex && _output.remaining_capacity() != 0) {
-        Substring ssWithMinorIndex = _unassembledSubstrings.top(); _unassembledSubstrings.pop();
+
+    while (!_unassembledHeap.empty() && _unassembledHeap.top().begin() <= _nextExpectedIndex && _output.remaining_capacity() != 0) {
+        Substring ssWithMinorIndex = _unassembledHeap.top(); _unassembledHeap.pop();
         // If there are some usable part of substring, write it.
         if (ssWithMinorIndex.containIndex(_nextExpectedIndex)) {
             string s = ssWithMinorIndex.literal(_nextExpectedIndex - ssWithMinorIndex.begin());
@@ -36,24 +38,30 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             // If the output is full, write much bit as possible, put the rest
             // substring back to the minor heap.
             if (bytesWritten != s.size()) {
-                _unassembledSubstrings.push(Substring(ssWithMinorIndex.begin()+bytesWritten, ssWithMinorIndex.literal(bytesWritten)));
+                _unassembledHeap.push(Substring(ssWithMinorIndex.begin()+bytesWritten, ssWithMinorIndex.literal(bytesWritten)));
             }
         }
     }
+
+    if (_nextExpectedIndex >= _eofIndex) {
+        _output.end_input();
+    }
+
+    
 }
 
 // use klee's algorithm, comput on the fly.
 size_t StreamReassembler::unassembled_bytes() const {
-    uint64_t n = _unassembledSubstrings.size();
+    uint64_t n = _unassembledHeap.size();
     vector<pair <uint64_t, bool> > points{2*n};
     uint64_t overlappedSegmentCount = 0;
     size_t result = 0;  // Total range of union of segments.
 
     // Build an sorted array of 2n beginning and ending of segments.
     for (uint64_t i=0; i<n; i++) {
-        auto iit = _indexToUnassembledBytes.begin();
-        points[2*i] = make_pair(iit->first, false);
-        points[2*i+1] = make_pair(iit->first + iit->second.size(), true);
+        auto iit = _unassembledHeap.index(i);
+        points[2*i] = make_pair(iit.begin(), false);
+        points[2*i+1] = make_pair(iit.end(), true);
     }
     sort(points.begin(), points.end());
 
