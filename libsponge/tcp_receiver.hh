@@ -7,6 +7,7 @@
 #include "wrapping_integers.hh"
 
 #include <optional>
+#include <queue>
 
 //! \brief The "receiver" part of a TCP implementation.
 
@@ -14,18 +15,49 @@
 //! the acknowledgment number and window size to advertise back to the
 //! remote TCPSender.
 class TCPReceiver {
+    struct Interval {
+        uint64_t begin;
+        size_t length;
+        Interval(WrappingInt32 wBegin, size_t l, WrappingInt32 isn, uint64_t checkpoint): begin(unwrap(wBegin, isn, checkpoint)), length(l) {}
+        bool operator<(const Interval i) const { return begin > i.begin; }
+        bool containIndex(const uint64_t absIndex) const { return begin <= absIndex && absIndex < end(); }
+        uint64_t end() const { return begin + length; }
+    };
+
     //! Our data structure for re-assembling bytes.
     StreamReassembler _reassembler;
 
     //! The maximum number of bytes we'll store.
     size_t _capacity;
 
+    //! Whether SYN is received.
+    bool _synced;
+
+    //! Initial sequence number.
+    WrappingInt32 _isn;
+
+    uint64_t _checkpoint;
+
+    uint64_t _absAckno;
+
+    // Intervals of received but not acked yet.
+    std::priority_queue<Interval> _unresolvedIntervals;
+
+    // Go through unresolved intervals, move forward ackno if possible.
+    // Return ackno after solved.
+    WrappingInt32 pushAck(const TCPSegment &seg);
+
+    // If TCPSegment lands in the receiving window.
+    // false if no SYN has been received.
+    bool inWindow(const TCPSegment &seg);
+    bool inWindow(const uint64_t &begin, const size_t &length);
+
   public:
     //! \brief Construct a TCP receiver
     //!
     //! \param capacity the maximum number of bytes that the receiver will
     //!                 store in its buffers at any give time.
-    TCPReceiver(const size_t capacity) : _reassembler(capacity), _capacity(capacity) {}
+    TCPReceiver(const size_t capacity) : _reassembler(capacity), _capacity(capacity), _synced(false), _isn(0), _checkpoint(0), _absAckno(0), _unresolvedIntervals() {}
 
     //! \name Accessors to provide feedback to the remote TCPSender
     //!@{
@@ -62,6 +94,8 @@ class TCPReceiver {
     ByteStream &stream_out() { return _reassembler.stream_out(); }
     const ByteStream &stream_out() const { return _reassembler.stream_out(); }
     //!@}
+
+    // push
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_RECEIVER_HH

@@ -21,12 +21,13 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     // printf("\n++ enter push_substring ++\n");
     // Above all, update eof information.
     if (eof) {  // latter eof set would override the previous one.
+        printf("index = %lu\n", index);  // tag for search: PR
+        printf("data.size() = %lu\n", data.size());  // tag for search: PR
+        printf("_eofIndex = %lu\n", _eofIndex);  // tag for search: PR
         _eofIndex = index + data.size();
     }
 
     _unassembledHeap.push(Substring(index, data));
-    //     _unassembledHeap.push_back(Substring(index, data)); push_heap(_unassembledHeap.begin(), _unassembledHeap.end());
-
 
     while (!_unassembledHeap.empty() && _unassembledHeap.top().begin() <= _nextExpectedIndex && _output.remaining_capacity() != 0) {
         Substring ssWithMinorIndex = _unassembledHeap.top(); _unassembledHeap.pop();
@@ -42,12 +43,9 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             }
         }
     }
-
     if (_nextExpectedIndex >= _eofIndex) {
         _output.end_input();
     }
-
-    
 }
 
 // use klee's algorithm, comput on the fly.
